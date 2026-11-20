@@ -19,3 +19,13 @@ declare module 'node:assert' {
     ok(value: unknown, message?: string): asserts value
   }
 }
+
+declare module 'node:fs/promises' {
+  /** Only the surface src/worker.ts uses: reading the auto-discovered auth files as text. */
+  export function readFile(path: string, encoding: 'utf8'): Promise<string>
+}
+
+declare module 'node:os' {
+  /** Only the surface src/worker.ts uses: resolving `~` for the auth-file paths. */
+  export function homedir(): string
+}
