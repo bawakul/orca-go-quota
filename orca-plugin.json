@@ -1,0 +1,76 @@
+{
+  "manifestVersion": 2,
+  "id": "go-quota",
+  "name": "Go Quota",
+  "version": "0.1.0",
+  "description": "Your OpenCode Go plan usage — rolling, weekly and monthly quota with reset times — in a sidebar panel and the status bar. Uses your API key, not the browser-cookie dance.",
+  "author": {
+    "name": "Bawa Kulkarni",
+    "url": "https://github.com/bawakul"
+  },
+  "license": "MIT",
+  "repository": "https://github.com/bawakul/orca-go-quota",
+  "icon": "images/icon.png",
+  "engines": {
+    "orca": ">=1.4.248"
+  },
+  "pluginApi": 1,
+  "execution": "trusted-worker",
+  "main": "src/worker.ts",
+  "contributes": {
+    "panels": [
+      {
+        "id": "go-quota",
+        "title": "Go Quota",
+        "icon": "gauge",
+        "entry": "src/panel.tsx",
+        "ui": "components"
+      }
+    ],
+    "commands": [
+      {
+        "id": "goQuota.toggle",
+        "title": "Go Quota: show or hide the panel",
+        "action": "sidebar.right.toggle"
+      }
+    ],
+    "statusBarItems": [
+      {
+        "id": "quota",
+        "text": "Go —",
+        "icon": "gauge",
+        "tooltip": "OpenCode Go quota",
+        "command": "goQuota.toggle"
+      }
+    ],
+    "events": [
+      {
+        "on": "agent.status.changed"
+      }
+    ],
+    "settings": [
+      {
+        "key": "apiKey",
+        "title": "OpenCode Go API key",
+        "description": "Optional. Overrides keys auto-found in ~/.pi/agent/auth.json and the OpenCode CLI. Stored in Orca's settings; the panel's Save key button uses encrypted secrets instead.",
+        "type": "string",
+        "default": "",
+        "placeholder": "oc_sk_…"
+      }
+    ]
+  },
+  "capabilities": [
+    {
+      "kind": "storage:own"
+    },
+    {
+      "kind": "settings:own"
+    },
+    {
+      "kind": "secrets:own"
+    },
+    {
+      "kind": "agent:read"
+    }
+  ]
+}
