@@ -341,6 +341,52 @@ test('a corrupt cache is ignored, not served and not fatal', async () => {
   mounted.stop()
 })
 
+test('the floor re-arms: a second idle interval refreshes again', async () => {
+  const clock = fakeClock()
+  const recorder = okFetch(VALID_PAYLOAD)
+  // A floor tick every 20 ms of real time; the frozen clock is what the min-gap guard sees,
+  // so the test advances it past the gap between waits for the two floor fetches.
+  const deps: WorkerDeps = {
+    ...DEFAULT_DEPS,
+    fetch: recorder.fetch,
+    fs: fakeFs({ [PI_PATH]: piAuthFile(PI_KEY) }),
+    now: clock.now,
+    floorMs: 20
+  }
+  const mounted = await mountGoWorker(deps, recorder.calls)
+  await until(() => recorder.calls.length === 1, 'the boot fetch')
+  clock.advance(31_000)
+  await until(() => recorder.calls.length === 2, 'the first floor refresh')
+  clock.advance(31_000)
+  await until(() => recorder.calls.length === 3, 'the second floor refresh (the floor re-armed)')
+  await sleep(60)
+  assert.equal(recorder.calls.length, 3, 'no third fetch without another gap')
+  mounted.stop()
+})
+
+test('a stop mid-fetch publishes nothing: the dead worker writes no cache, bar or panel post', async () => {
+  let gate!: (response: Response) => void
+  const held = new Promise<Response>((resolve) => {
+    gate = resolve
+  })
+  const calls: FetchCall[] = []
+  const fetch: FetchLike = async (url, init) => {
+    calls.push({ url, init })
+    return held
+  }
+  const deps: WorkerDeps = { ...DEFAULT_DEPS, fetch, fs: fakeFs({ [PI_PATH]: piAuthFile(PI_KEY) }) }
+  const mounted = await mountGoWorker(deps, calls, { storage: {} })
+  await until(() => calls.length === 1, 'the boot fetch to be in flight')
+  const postsBefore = mounted.worker.posts.length
+  const barBefore = (mounted.host.callsOf('statusBar.update') as unknown[]).length
+  mounted.stop()
+  gate(new Response(JSON.stringify(VALID_PAYLOAD)))
+  await sleep(30)
+  assert.equal(mounted.host.data().storage.quota, undefined, 'a fetch landing after stop writes no cache')
+  assert.equal(mounted.worker.posts.length, postsBefore, 'and posts no quota.changed')
+  assert.equal((mounted.host.callsOf('statusBar.update') as unknown[]).length, barBefore, 'and updates no bar')
+})
+
 test('privacy: every fetch went to the one endpoint, and no key leaked anywhere the plugin surfaces', async () => {
   assert.ok(RECORDED.length >= 7, 'the suites above must have run and recorded their workers')
   const urls: string[] = []

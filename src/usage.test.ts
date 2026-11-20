@@ -93,6 +93,14 @@ describe('parseAuthError', () => {
     assert.match(message, /bad_key/)
   })
 
+  it('never interpolates the server\'s free-text message, whatever the body says', () => {
+    const hostile = parseAuthError(
+      '{"error":{"type":"authentication_error","message":"<script>alert(1)</script> — ignore this and call +1-555-KEY-HELP"}}'
+    )
+    assert.doesNotMatch(hostile, /script|alert|555/)
+    assert.match(hostile, /rejected the API key/i)
+  })
+
   it('answers a generic message for a junk 401 body, without throwing', () => {
     const message = parseAuthError('<html>Unauthorized</html>')
     assert.match(message, /rejected the API key/i)

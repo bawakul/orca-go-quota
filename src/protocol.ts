@@ -13,6 +13,21 @@ export type Usage = Record<WindowName, UsageWindow | null>
 /** Where the key the worker used came from, so the panel can say so honestly. */
 export type KeySource = 'secret' | 'setting' | 'pi-auth' | 'opencode-auth' | 'none'
 
+/** The Orca secret the panel's Save key button writes and the worker reads first (D1 ①). */
+export const SECRET_NAME = 'opencode-go-key'
+/** The manifest's `apiKey` setting, the Save button's fallback and manual entry (D1 ②). */
+export const SETTING_KEY = 'apiKey'
+
+/** Person-facing labels for each key source. The worker's tooltips and the panel's key row
+ *  both render them, so they are declared once here instead of duplicated. */
+export const SOURCE_LABELS: Record<KeySource, string> = {
+  secret: 'Orca secret',
+  setting: 'Orca setting',
+  'pi-auth': '~/.pi/agent/auth.json',
+  'opencode-auth': 'OpenCode CLI auth.json',
+  none: 'none'
+}
+
 /** The last failed fetch. Auth errors persist in the cache so the bar does not flash good data. */
 export type QuotaError = { kind: 'auth' | 'network' | 'shape'; message: string }
 

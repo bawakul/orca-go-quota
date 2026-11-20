@@ -11,6 +11,7 @@
 import { readFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import type { Disposable, JsonValue, OrcaWorkerApi, PluginEvents } from 'orca/worker'
+import { SECRET_NAME, SETTING_KEY, SOURCE_LABELS } from './protocol.ts'
 import type { KeySource, QuotaError, QuotaSnapshot, Usage } from './protocol.ts'
 import { normalizeUsage, parseAuthError, statusFor, type BarStatus } from './usage.ts'
 
@@ -21,10 +22,6 @@ const CACHE_KEY = 'quota'
 const CACHE_VERSION = 1
 /** The manifest's `contributes.statusBarItems[0].id`. */
 const BAR_ID = 'quota'
-/** ① Orca's encrypted secret store; the panel's Save key button writes here. */
-const SECRET_NAME = 'opencode-go-key'
-/** ② The `apiKey` setting from the manifest's `contributes.settings`. */
-const SETTING_KEY = 'apiKey'
 /** The fetch gives up after this long; `plugin.request` waits 30 s, so the panel never hangs. */
 const FETCH_TIMEOUT_MS = 10_000
 /** The usage payload is well under 1 KiB; anything bigger is not our endpoint. */
@@ -82,14 +79,6 @@ type CacheEntry = {
 
 const KEY_SOURCES: readonly KeySource[] = ['secret', 'setting', 'pi-auth', 'opencode-auth', 'none']
 const ERROR_KINDS: readonly QuotaError['kind'][] = ['auth', 'network', 'shape']
-
-const SOURCE_LABELS: Record<KeySource, string> = {
-  secret: 'Orca secret',
-  setting: 'Orca setting',
-  'pi-auth': '~/.pi/agent/auth.json',
-  'opencode-auth': 'OpenCode CLI auth.json',
-  none: 'none'
-}
 
 /** The last worker the default export started; `deactivate` (which Orca awaits before it
  *  stops the worker) clears its timers and subscriptions. */
@@ -180,8 +169,10 @@ function run(orca: OrcaWorkerApi, d: WorkerDeps): Stop {
   }
 
   /** Persists the outcome, updates the bar, tells every open panel. Best-effort: a failing
-   *  piece is logged and the rest still runs. */
+   *  piece is logged and the rest still runs. A fetch landing after `deactivate()` must write
+   *  nothing — the worker is dead, its panels and bar are not. */
   async function publish(): Promise<void> {
+    if (stopped) return
     try {
       await orca.storage.set(CACHE_KEY, state as unknown as JsonValue)
     } catch (error) {
@@ -395,9 +386,13 @@ function run(orca: OrcaWorkerApi, d: WorkerDeps): Stop {
   }
 
   // The floor: however idle the machine, one refresh every interval keeps the bar honest.
-  const floor = arm(() => {
+  // Each tick re-arms the next, so the floor is recurring, not one-shot; `stop` clears it.
+  let floor: ArmedTimer | null = arm(floorTick, d.floorMs)
+  function floorTick(): void {
+    if (stopped) return
     void refresh()
-  }, d.floorMs)
+    floor = arm(floorTick, d.floorMs)
+  }
 
   /** Start-up (D2 ①): serve the cache to the bar instantly — the manifest's `Go —` covers
    *  the no-cache window — then fetch live. */
@@ -425,7 +420,7 @@ function run(orca: OrcaWorkerApi, d: WorkerDeps): Stop {
   function stop(): void {
     stopped = true
     settle?.clear()
-    floor.clear()
+    floor?.clear()
     while (disposables.length > 0) disposables.pop()?.dispose()
   }
 

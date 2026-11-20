@@ -50,7 +50,10 @@ export function normalizeUsage(json: unknown): Usage | null {
 }
 
 /** A 401 body to a person-facing message: includes the body's `error.code` when it parses
- *  (`api_key_expired` gets the clearest wording) and a generic message for junk bodies. */
+ *  (`api_key_expired` gets the clearest wording) and a generic message for junk bodies. Only
+ *  the machine-readable `code` is trusted — the server's free-text `message` is never
+ *  interpolated, so a hostile endpoint cannot push arbitrary text into panel-rendered
+ *  strings. */
 export function parseAuthError(body: unknown): string {
   let error: unknown
   try {
@@ -63,13 +66,11 @@ export function parseAuthError(body: unknown): string {
     // A junk body (HTML, plain text, empty): fall through to the generic message.
   }
   if (typeof error === 'object' && error !== null) {
-    const e = error as Record<string, unknown>
-    const code = typeof e.code === 'string' ? e.code : ''
-    const message = typeof e.message === 'string' ? e.message : ''
+    const code = (error as Record<string, unknown>).code
     if (code === 'api_key_expired')
       return 'The OpenCode Go API key expired. Add a new key in the Go Quota panel.'
-    if (code) return `OpenCode Go rejected the key (${code}). Add a new key in the Go Quota panel.`
-    if (message) return `OpenCode Go rejected the key: ${message}`
+    if (typeof code === 'string' && code !== '')
+      return `OpenCode Go rejected the key (${code}). Add a new key in the Go Quota panel.`
   }
   return 'OpenCode Go rejected the API key. Add a valid key in the Go Quota panel.'
 }
