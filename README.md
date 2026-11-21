@@ -55,6 +55,8 @@ If the built-in tracking works for you, you don't need this plugin.
 
 Orca ≥ 1.4.248, desktop. The status bar is desktop-only, and Orca does not persist status-bar text across restarts: after a restart the bar shows the default (`Go —`) until the worker's first update lands. The panel works everywhere the panel UI does.
 
+**Tested on one combination:** Orca on macOS, with the Go key auto-discovered from the pi coding agent's auth file (`~/.pi/agent/auth.json`) and the quota driven by pi sessions. The quota numbers are account-level, so any client spending your Go plan produces the same numbers — but the OpenCode CLI key path and the panel's Save button are covered by the automated tests, not by live testing on this machine. If your coding agent keeps its Go key somewhere we don't look, paste it into the panel's Save box (or the `apiKey` setting) — that path is client-agnostic. If something misbehaves on your setup, an issue describing your client and where its key lives is welcome.
+
 ## Develop
 
 Orca transpiles the TSX/TS files when they load, so there is no build step. The worker (`src/worker.ts`) answers the panel (`src/panel.tsx`) over `plugin.request`; `src/protocol.ts` types both sides.
