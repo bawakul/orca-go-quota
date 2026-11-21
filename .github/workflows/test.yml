@@ -1,5 +1,8 @@
-# CI: the checks that need nothing but Node. The full suite (`orca plugin test .`) needs
-# the Orca CLI and stays desk-side; this workflow is the stranger's quick trust signal.
+# CI: the checks that pass on a fresh clone with nothing but Node. The full suite
+# (`orca plugin test .`) and the typecheck both need Orca's generated typings
+# (`.orca/types/`, gitignored, produced by `orca plugin types` locally), so they
+# stay desk-side; this workflow runs the pure half of the suite, which is the
+# stranger's quick trust signal.
 name: test
 
 on:
@@ -15,9 +18,5 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24
-      # The repo has no package.json by design; the pinned `-y -p typescript` form is what
-      # the README prescribes (a plain `npx tsc` is a typosquat trap).
-      - name: Typecheck
-        run: npx -y -p typescript tsc -p .
       - name: Pure tests
         run: node --test src/usage.test.ts
