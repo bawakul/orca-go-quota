@@ -106,6 +106,27 @@ describe('parseAuthError', () => {
     assert.match(message, /rejected the API key/i)
     assert.equal(parseAuthError(''), parseAuthError('not json at all'))
   })
+
+  it('pattern-gates the code: markup, spaces, casing or over-length answer the generic message', () => {
+    const bodies = [
+      '{"error":{"code":"<script>alert(1)</script>"}}',
+      '{"error":{"code":"BAD KEY"}}',
+      '{"error":{"code":"key expired, call +1-555-KEY-HELP"}}',
+      '{"error":{"code":"a".repeat(41)}}',
+      '{"error":{"code":""}}'
+    ]
+    for (const body of bodies) {
+      const message = parseAuthError(body)
+      assert.match(message, /rejected the API key/i)
+      assert.doesNotMatch(message, /script|alert|555|BAD|repeat/) 
+      assert.doesNotMatch(message, /\(/, 'the generic message interpolates no code')
+    }
+  })
+
+  it('still names a machine-shaped code within the length limit', () => {
+    const message = parseAuthError('{"error":{"code":"' + 'x'.repeat(40) + '"}}')
+    assert.match(message, /rejected the key \(x{40}\)/)
+  })
 })
 
 describe('statusFor', () => {

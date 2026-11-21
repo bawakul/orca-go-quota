@@ -49,11 +49,17 @@ export function normalizeUsage(json: unknown): Usage | null {
   return usable ? usage : null
 }
 
+/** Codes safe to show a person: one run of lowercase letters, digits and underscores, 40 max.
+ *  Anything else — markup, spaces, emoji, novel-length strings — answers the generic message
+ *  instead, so a hostile endpoint cannot push styled or oversized text into the panel. */
+const SAFE_ERROR_CODE = /^[a-z0-9_]{1,40}$/
+
 /** A 401 body to a person-facing message: includes the body's `error.code` when it parses
- *  (`api_key_expired` gets the clearest wording) and a generic message for junk bodies. Only
- *  the machine-readable `code` is trusted — the server's free-text `message` is never
- *  interpolated, so a hostile endpoint cannot push arbitrary text into panel-rendered
- *  strings. */
+ *  and matches `SAFE_ERROR_CODE` (`api_key_expired` gets the clearest wording); every other
+ *  code and every junk body falls back to the generic message. Only the machine-readable
+ *  `code` is ever interpolated — the server's free-text `message` never is — and even the
+ *  code only verbatim when it is plainly machine-shaped, so a hostile endpoint cannot push
+ *  arbitrary text into panel-rendered strings. */
 export function parseAuthError(body: unknown): string {
   let error: unknown
   try {
@@ -69,7 +75,7 @@ export function parseAuthError(body: unknown): string {
     const code = (error as Record<string, unknown>).code
     if (code === 'api_key_expired')
       return 'The OpenCode Go API key expired. Add a new key in the Go Quota panel.'
-    if (typeof code === 'string' && code !== '')
+    if (typeof code === 'string' && SAFE_ERROR_CODE.test(code))
       return `OpenCode Go rejected the key (${code}). Add a new key in the Go Quota panel.`
   }
   return 'OpenCode Go rejected the API key. Add a valid key in the Go Quota panel.'

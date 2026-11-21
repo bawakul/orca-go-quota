@@ -45,6 +45,11 @@ test('renders the three windows, the badge tones, the bars and the key source ro
   assert.match(view.find({ type: 'KeyValue' })?.text ?? '', /~\/\.pi\/agent\/auth\.json/)
   assert.equal(view.find({ type: 'EmptyState' }), null, 'there is a key, so no empty state')
   assert.equal(view.find({ text: 'Save key' }), null, 'and no save box')
+  // Publish-readiness: every atom is memory-only, so nothing ever persists in any scope —
+  // the snapshot (key source label included) must not outlive the panel run.
+  assert.deepEqual(view.persisted.plugin, {}, 'no plugin-scoped atom ever persists')
+  assert.deepEqual(view.persisted.workspace, {}, 'no workspace-scoped atom ever persists')
+  assert.deepEqual(view.persisted.storage, {}, 'no storage-scoped atom ever persists')
   assert.deepEqual(view.errors, [])
   assert.deepEqual(view.refusals, [])
   await view.unmount()

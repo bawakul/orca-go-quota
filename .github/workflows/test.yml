@@ -1,0 +1,23 @@
+# CI: the checks that need nothing but Node. The full suite (`orca plugin test .`) needs
+# the Orca CLI and stays desk-side; this workflow is the stranger's quick trust signal.
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      # The repo has no package.json by design; the pinned `-y -p typescript` form is what
+      # the README prescribes (a plain `npx tsc` is a typosquat trap).
+      - name: Typecheck
+        run: npx -y -p typescript tsc -p .
+      - name: Pure tests
+        run: node --test src/usage.test.ts
